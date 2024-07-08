@@ -9,31 +9,52 @@ from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 from math import ceil
+import os
 
-options = webdriver.ChromeOptions()
-options.add_experimental_option('detach', True)
-service = webdriver.ChromeService(ChromeDriverManager().install())
+class ResponsiveTester:
+  
+  def __init__(self, urls):
+    self.urls = urls
+    self.options = webdriver.ChromeOptions()
+    self.options.add_experimental_option('detach', True)
+    self.service = webdriver.ChromeService(ChromeDriverManager().install())
+    self.browser = webdriver.Chrome(service=self.service, options=self.options)
+    self.browser.maximize_window()
+    self.sizes = [500, 960, 1366, 1920] 
 
-browser = webdriver.Chrome(service=service, options=options)
+  def makedirs(self, url):
+    self.website_name = url.split('.')[1]
+    if not os.path.exists(f"screenshots/{self.website_name}"):
+      os.makedirs(f"screenshots/{self.website_name}")
+    return self.website_name
 
-browser.get('https://nomadcoders.co')
-browser.maximize_window()
-time.sleep(2)
 
-window_size = browser.get_window_size()
-BROWSER_HEIGHT = window_size.get('height')
+  def screenshot(self, url, website_name):
+    self.browser.get(url)
+    time.sleep(2)
+    window_size = self.browser.get_window_size()
+    BROWSER_HEIGHT = window_size.get('height')
 
-# 크롬 브라우저가 지원하는 최소 너비 = 500px
-sizes = [500, 960, 1366, 1920]
-for size in sizes:
-  browser.set_window_size(size, BROWSER_HEIGHT)
-  browser.execute_script(f"window.scrollTo(0, 0)")
-  time.sleep(3)
-  scroll_fullsize = browser.execute_script('return document.body.scrollHeight')
-  nav_bar_height = 64
-  section_height = browser.execute_script('return window.innerHeight')-nav_bar_height
-  total_sections = ceil(scroll_fullsize/section_height)
-  for section in range(total_sections):
-    browser.execute_script(f"window.scrollTo(0, {(section) * section_height})")
-    time.sleep(1)
-    browser.save_screenshot(f"screenshots/{size}x{section+1}.png")
+    for size in self.sizes:
+      self.browser.set_window_size(size, BROWSER_HEIGHT)
+      self.browser.execute_script(f"window.scrollTo(0, 0)")
+      time.sleep(3)
+      scroll_fullsize = self.browser.execute_script('return document.body.scrollHeight')
+      section_height = self.browser.execute_script('return window.innerHeight')
+      total_sections = ceil(scroll_fullsize/section_height)
+      for section in range(total_sections):
+        self.browser.execute_script(f"window.scrollTo(0, {(section) * section_height})")
+        time.sleep(1)
+        self.browser.save_screenshot(f"screenshots/{self.website_name}/{size}x{section+1}.png")
+
+  def start(self):
+    for url in self.urls:
+      self.makedirs(url)
+      self.screenshot(url, self.website_name)
+
+
+urls = ['https://www.mcst.go.kr/kor/main.jsp', 
+        'https://www.nts.go.kr/',
+        'https://www.mpm.go.kr/mpm/']
+responsive_test = ResponsiveTester(urls)
+responsive_test.start()
